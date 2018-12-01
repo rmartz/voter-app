@@ -10,12 +10,13 @@ class VoterAppStack extends cdk.Stack {
   constructor(parent: cdk.App, name: string, props?: cdk.StackProps) {
     super(parent, name, props);
 
-    const prefix = 'voter';
-    const subdomain = `${prefix}.reedmartz.com`;
+    const stub = 'voter';
+    const domain = 'reedmartz.com'
+    const fqdn = `${stub}.${domain}`;
 
     const static_bucket = new s3.Bucket(this, 'StaticS3Bucket', {
       versioned: true,
-      bucketName: subdomain
+      bucketName: fqdn
     });
 
     const logs_bucket = s3.Bucket.import(this, 'LogS3Bucket', {
@@ -23,8 +24,8 @@ class VoterAppStack extends cdk.Stack {
     });
 
     const static_cert = new acm.Certificate(this, 'Certificate', {
-      domainName: subdomain
-  });
+      domainName: fqdn
+    });
 
     const static_cf = new cloudfront.CloudFrontWebDistribution(this, 'StaticCloudFront', {
       originConfigs: [
@@ -57,25 +58,25 @@ class VoterAppStack extends cdk.Stack {
       ],
       loggingConfig: {
         bucket: logs_bucket,
-        prefix: `${prefix}.reedmartz.com/cloudfront/`
+        prefix: `${fqdn}/cloudfront/`
       },
       aliasConfiguration: {
         acmCertRef: static_cert.certificateArn,
-        names: [subdomain]
+        names: [fqdn]
       }
     });
 
     const zone = new route53.HostedZoneProvider(this, {
-      domainName: 'reedmartz.com'
+      domainName: domain
     }).findAndImport(this, 'PrimaryDomain');
 
     new route53.AliasRecord(zone, 'StaticDnsEntry', {
-        recordName: prefix,
+        recordName: stub,
         target: static_cf
     });
 
     const deploy_user = new iam.User(this, 'S3PublishUser', {
-      userName: `travis-ci-${prefix}`
+      userName: `travis-ci-${stub}`
     });
     static_bucket.grantPut(deploy_user);
   }
