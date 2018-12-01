@@ -47,12 +47,12 @@ class VoterAppStack extends cdk.Stack {
         {
           errorCode: 404,
           responseCode: 200,
-          responsePagePath: '/'
+          responsePagePath: '/index.html'
         },
         {
           errorCode: 403,
           responseCode: 200,
-          responsePagePath: '/'
+          responsePagePath: '/index.html'
         }
       ],
       loggingConfig: {
