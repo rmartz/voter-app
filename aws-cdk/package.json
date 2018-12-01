@@ -17,8 +17,11 @@
         "aws-cdk": "^0.18.1"
     },
     "dependencies": {
-        "@aws-cdk/aws-sns": "^0.18.1",
-        "@aws-cdk/aws-sqs": "^0.18.1",
+        "@aws-cdk/aws-certificatemanager": "^0.18.1",
+        "@aws-cdk/aws-cloudfront": "^0.18.1",
+        "@aws-cdk/aws-iam": "^0.18.1",
+        "@aws-cdk/aws-route53": "^0.18.1",
+        "@aws-cdk/aws-s3": "^0.18.1",
         "@aws-cdk/cdk": "^0.18.1"
     }
 }

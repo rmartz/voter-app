@@ -1,19 +1,83 @@
 #!/usr/bin/env node
-import sns = require('@aws-cdk/aws-sns');
-import sqs = require('@aws-cdk/aws-sqs');
+import s3 = require('@aws-cdk/aws-s3');
+import acm = require('@aws-cdk/aws-certificatemanager');
+import cloudfront = require('@aws-cdk/aws-cloudfront');
+import route53 = require('@aws-cdk/aws-route53');
+import iam = require('@aws-cdk/aws-iam');
 import cdk = require('@aws-cdk/cdk');
 
 class VoterAppStack extends cdk.Stack {
   constructor(parent: cdk.App, name: string, props?: cdk.StackProps) {
     super(parent, name, props);
 
-    const queue = new sqs.Queue(this, 'VoterAppQueue', {
-      visibilityTimeoutSec: 300
+    const prefix = 'voter';
+    const subdomain = `${prefix}.reedmartz.com`;
+
+    const static_bucket = new s3.Bucket(this, 'StaticS3Bucket', {
+      versioned: true,
+      bucketName: subdomain
     });
 
-    const topic = new sns.Topic(this, 'VoterAppTopic');
+    const logs_bucket = s3.Bucket.import(this, 'LogS3Bucket', {
+      bucketArn: 'arn:aws:s3:::reedmartz-access-logs'
+    });
 
-    topic.subscribeQueue(queue);
+    const static_cert = new acm.Certificate(this, 'Certificate', {
+      domainName: subdomain
+  });
+
+    const static_cf = new cloudfront.CloudFrontWebDistribution(this, 'StaticCloudFront', {
+      originConfigs: [
+        {
+          s3OriginSource: {
+            s3BucketSource: static_bucket
+          },
+          behaviors : [
+            {
+              isDefaultBehavior: true,
+              compress: true,
+              maxTtlSeconds: 86400,
+              minTtlSeconds: 0,
+              defaultTtlSeconds: 3600
+            }
+          ],
+        },
+      ],
+      errorConfigurations: [
+        {
+          errorCode: 404,
+          responseCode: 200,
+          responsePagePath: '/'
+        },
+        {
+          errorCode: 403,
+          responseCode: 200,
+          responsePagePath: '/'
+        }
+      ],
+      loggingConfig: {
+        bucket: logs_bucket,
+        prefix: `${prefix}.reedmartz.com/cloudfront/`
+      },
+      aliasConfiguration: {
+        acmCertRef: static_cert.certificateArn,
+        names: [subdomain]
+      }
+    });
+
+    const zone = new route53.HostedZoneProvider(this, {
+      domainName: 'reedmartz.com'
+    }).findAndImport(this, 'PrimaryDomain');
+
+    new route53.AliasRecord(zone, 'StaticDnsEntry', {
+        recordName: prefix,
+        target: static_cf
+    });
+
+    const deploy_user = new iam.User(this, 'S3PublishUser', {
+      userName: `travis-ci-${prefix}`
+    });
+    static_bucket.grantPut(deploy_user);
   }
 }
 
