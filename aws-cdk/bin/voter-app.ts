@@ -16,7 +16,8 @@ class VoterAppStack extends cdk.Stack {
 
     const static_bucket = new s3.Bucket(this, 'StaticS3Bucket', {
       versioned: true,
-      bucketName: fqdn
+      bucketName: fqdn,
+      publicReadAccess: true
     });
 
     const logs_bucket = s3.Bucket.import(this, 'LogS3Bucket', {
